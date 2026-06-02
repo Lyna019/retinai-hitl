@@ -11,6 +11,7 @@ To use the vLLM fallback instead:
   VLM_SERVICE_URL=https://<cloudflared-tunnel>/v1
   VLM_KUBEFLOW_COOKIE=<cookie from browser>
 """
+import os
 import base64
 import httpx
 import json

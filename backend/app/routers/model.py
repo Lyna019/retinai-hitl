@@ -12,6 +12,7 @@ the model service so the preprocessing pipeline can load the image from disk.
 Swap the underlying PyTorch checkpoint inside the model service without
 touching this router.
 """
+import os
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
