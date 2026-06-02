@@ -32,13 +32,22 @@ router = APIRouter(prefix="/vlm", tags=["vlm"])
 
 # ─── RetiZero (primary) ───────────────────────────────────────────────────────
 
+def _b64_image(file_path: str | None) -> str | None:
+    if not file_path or not os.path.exists(file_path):
+        return None
+    import base64
+    with open(file_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
 async def _describe_with_retizero(image_id: str, file_path: str) -> str:
     """Call RetiZero microservice for zero-shot classification."""
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             r = await client.post(
                 f"{settings.retizero_service_url}/describe",
-                json={"image_id": image_id, "file_path": file_path},
+                json={"image_id": image_id, "file_path": file_path,
+                      "image_data": _b64_image(file_path)},
             )
             r.raise_for_status()
             return r.json().get("description", "[Réponse vide de RetiZero]")

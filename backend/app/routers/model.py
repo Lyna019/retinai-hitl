@@ -30,6 +30,15 @@ def _file_path_for(image_id: str, db: Session) -> str | None:
     return img.file_path if img else None
 
 
+def _encode_image(file_path: str | None) -> str | None:
+    """Base64-encode image for remote model services (when file isn't on the same host)."""
+    if not file_path or not os.path.exists(file_path):
+        return None
+    import base64
+    with open(file_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
 @router.post("/predict")
 async def predict(
     image_id: str,
@@ -37,12 +46,11 @@ async def predict(
     _user=Depends(get_current_user),
 ):
     file_path = _file_path_for(image_id, db)
+    payload = {"image_id": image_id, "file_path": file_path,
+               "image_data": _encode_image(file_path)}
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            r = await client.post(
-                f"{settings.model_service_url}/predict",
-                json={"image_id": image_id, "file_path": file_path},
-            )
+            r = await client.post(f"{settings.model_service_url}/predict", json=payload)
         except httpx.RequestError as e:
             raise HTTPException(503, f"Service modèle indisponible: {e}")
     if r.status_code != 200:
@@ -94,10 +102,11 @@ async def uncertainty(
     _user=Depends(get_current_user),
 ):
     file_path = _file_path_for(image_id, db)
+    payload = {"image_id": image_id, "file_path": file_path,
+               "image_data": _encode_image(file_path)}
     async with httpx.AsyncClient(timeout=60.0) as client:
         r = await client.post(
-            f"{settings.model_service_url}/uncertainty",
-            json={"image_id": image_id, "file_path": file_path},
+            f"{settings.model_service_url}/uncertainty", json=payload,
         )
     if r.status_code != 200:
         raise HTTPException(r.status_code, r.text)

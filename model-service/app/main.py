@@ -317,11 +317,17 @@ def preprocess_uwf(pil_img: Image.Image, fast_resize: int = 1024) -> Image.Image
     return Image.fromarray(img)
 
 
-def _load_and_preprocess(file_path: str) -> Image.Image | None:
+def _load_and_preprocess(file_path: str | None, image_data: str | None = None) -> Image.Image | None:
     try:
-        return preprocess_uwf(Image.open(file_path))
+        if image_data:
+            import base64, io
+            img_bytes = base64.b64decode(image_data)
+            return preprocess_uwf(Image.open(io.BytesIO(img_bytes)))
+        if file_path and os.path.exists(file_path):
+            return preprocess_uwf(Image.open(file_path))
+        return None
     except Exception as exc:
-        log.warning("preprocess_uwf failed for %s: %s", file_path, exc)
+        log.warning("preprocess_uwf failed: %s", exc)
         return None
 
 
@@ -470,13 +476,15 @@ app = FastAPI(title="RetinAI Model Service", version="0.5.0", lifespan=lifespan)
 # ─────────────────────────── Request schemas ─────────────────────────────────
 
 class PredictRequest(BaseModel):
-    image_id:  str
-    file_path: str | None = None
+    image_id:   str
+    file_path:  str | None = None
+    image_data: str | None = None   # base64-encoded image (used when file_path not local)
 
 
 class UncertaintyRequest(BaseModel):
-    image_id:  str
-    file_path: str | None = None
+    image_id:   str
+    file_path:  str | None = None
+    image_data: str | None = None   # base64-encoded image
 
 
 # ─────────────────────────── Endpoints ───────────────────────────────────────
@@ -498,7 +506,7 @@ def health():
 
 @app.post("/predict")
 def predict(req: PredictRequest, background_tasks: BackgroundTasks):
-    preprocessed = _load_and_preprocess(req.file_path) if (req.file_path and os.path.exists(req.file_path)) else None
+    preprocessed = _load_and_preprocess(req.file_path, req.image_data)
     model, device = _load_model()
 
     if model is not None and preprocessed is not None:
@@ -522,7 +530,7 @@ def predict(req: PredictRequest, background_tasks: BackgroundTasks):
 @app.post("/uncertainty")
 def uncertainty(req: UncertaintyRequest):
     """Per-class binary entropy (multi-label) when model loaded, random mock otherwise."""
-    preprocessed = _load_and_preprocess(req.file_path) if (req.file_path and os.path.exists(req.file_path)) else None
+    preprocessed = _load_and_preprocess(req.file_path, req.image_data)
     model, device = _load_model()
 
     if model is not None and preprocessed is not None:

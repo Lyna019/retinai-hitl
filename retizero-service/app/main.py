@@ -232,7 +232,7 @@ _components = None
 
 # ─── Inference ───────────────────────────────────────────────────────────────
 
-def _run_inference(file_path: str) -> dict:
+def _run_inference(file_path: str | None, image_data: str | None = None) -> dict:
     if _components is None:
         return {
             "description": (
@@ -245,7 +245,11 @@ def _run_inference(file_path: str) -> dict:
     vit, bert, vis_proj, txt_proj, logit_scale, tokenizer, txt_embs, dev = _components
 
     try:
-        image = Image.open(file_path).convert("RGB")
+        if image_data:
+            import base64 as _b64, io
+            image = Image.open(io.BytesIO(_b64.b64decode(image_data))).convert("RGB")
+        else:
+            image = Image.open(file_path).convert("RGB")
         img_t = _TRANSFORM(image).unsqueeze(0).to(dev)
 
         with torch.no_grad():
@@ -365,8 +369,9 @@ app = FastAPI(title="RetinAI RetiZero Service", version="3.0.0", lifespan=lifesp
 # ─── Schemas ─────────────────────────────────────────────────────────────────
 
 class DescribeRequest(BaseModel):
-    image_id:  str
-    file_path: str | None = None
+    image_id:   str
+    file_path:  str | None = None
+    image_data: str | None = None   # base64-encoded image (used when file_path not local)
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -394,9 +399,10 @@ def list_labels():
 
 @app.post("/describe")
 def describe(req: DescribeRequest):
-    if not req.file_path or not os.path.exists(req.file_path):
+    # Accept image via base64 (remote) or local file path
+    if not req.image_data and (not req.file_path or not os.path.exists(req.file_path)):
         return {
             "description": f"[Image introuvable : {req.file_path}]",
             "top_labels":  [],
         }
-    return _run_inference(req.file_path)
+    return _run_inference(req.file_path, req.image_data)
