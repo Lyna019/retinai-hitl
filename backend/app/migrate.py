@@ -53,6 +53,10 @@ MIGRATIONS = [
     "ALTER TABLE custom_pathology_proposals ADD COLUMN IF NOT EXISTS admin_notes             TEXT",
     "ALTER TABLE custom_pathology_proposals ADD COLUMN IF NOT EXISTS reviewed_by             UUID REFERENCES users(id)",
     "ALTER TABLE custom_pathology_proposals ADD COLUMN IF NOT EXISTS image_id                UUID REFERENCES fundus_images(id) ON DELETE SET NULL",
+
+    # ── fundus_images — urgency + assignment ─────────────────────────────────
+    "ALTER TABLE fundus_images ADD COLUMN IF NOT EXISTS model_urgency  VARCHAR(4)",
+    "ALTER TABLE fundus_images ADD COLUMN IF NOT EXISTS assigned_to    UUID REFERENCES users(id) ON DELETE SET NULL",
 ]
 
 

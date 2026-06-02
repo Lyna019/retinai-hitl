@@ -12,10 +12,14 @@ const FILTERS = [
 
 // Predict urgency from top model prediction for the queue preview dots
 const previewUrgency = (img) => {
+  // Use model_urgency from backend (pre-computed from model predictions)
+  if (img.model_urgency) return img.model_urgency.toLowerCase()
+  // Fallback to top_k inspection for legacy images
   const top = img.predictions?.top_k?.[0]
   if (!top) return null
-  if (['OACR', 'ABACR', 'NOIAA'].includes(top.disease_code)) return 'p1'
-  if (['DR_MAC_OFF', 'GLAUC_AIGU'].includes(top.disease_code)) return 'p2'
+  if (['OACR', 'ABACR', 'NOIAA', 'CRAO', 'BRAO', 'AION'].includes(top.disease_code)) return 'p1'
+  if (['DR_MAC_OFF', 'RETDET', 'GLAUC_AIGU', 'RTR', 'GRT'].includes(top.disease_code)) return 'p2'
+  if (['UVEITE', 'VS', 'CRVO', 'OVCR', 'BRVO'].includes(top.disease_code)) return 'p3'
   if (top.disease_code === 'DR' && top.grade === '4') return 'p3'
   return 'p4'
 }

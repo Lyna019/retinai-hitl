@@ -1,5 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAnnotationStore } from '../lib/store'
+import { useAuthStore } from '../lib/store'
+import { api } from '../lib/api'
 import QueueSidebar from '../components/queue/QueueSidebar'
 import FundusViewer from '../components/viewer/FundusViewer'
 import PatientInfoPanel from '../components/annotation/PatientInfoPanel'
@@ -26,6 +28,33 @@ export default function AnnotationPage() {
   useEffect(() => {
     if (currentImageId) setStartTime(currentImageId)
   }, [currentImageId])
+
+  // Auto-save draft every 30 seconds — doctor never loses work on browser close
+  const autoSaveRef = useRef(null)
+  useEffect(() => {
+    const doSave = () => {
+      const state = useAnnotationStore.getState()
+      const imgId = state.currentImageId
+      const token = useAuthStore.getState().token
+      if (!imgId || !token) return
+      const ann = state.annotations[imgId] || {}
+      // Only save if there is something to save
+      if (!ann.disease_labels?.length && !ann.notes_text) return
+      api.saveDraft(imgId, {
+        disease_labels:  ann.disease_labels  || [],
+        regions:         ann.regions         || [],
+        gradcam_verdict: ann.gradcam_verdict || null,
+        notes_text:      ann.notes_text      || '',
+      }, token).catch(() => {})
+    }
+    autoSaveRef.current = setInterval(doSave, 30_000)
+    // Also save on page unload
+    window.addEventListener('beforeunload', doSave)
+    return () => {
+      clearInterval(autoSaveRef.current)
+      window.removeEventListener('beforeunload', doSave)
+    }
+  }, [])
 
   // Keyboard shortcut: Enter → submit
   useEffect(() => {

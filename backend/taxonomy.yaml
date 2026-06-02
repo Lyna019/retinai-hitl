@@ -1,0 +1,1216 @@
+# =============================================================================
+#  RetinAI Pathology & Sign Taxonomy — Clinician-Validated Final Version
+#  ---------------------------------------------------------------------------
+#  This taxonomy is the SINGLE SOURCE OF TRUTH for every regex, prompt, and
+#  label in the pipeline. Built by reconciling five public retinal datasets
+#  (RFMiD v1, RFMiD v2, ODIR, Mendeley, BRSet) against the clinical reality
+#  observed by the supervising ophthalmologist (Dr. Mekki) at Ibn Al Haythem.
+#
+#  Reconciliation actions applied during construction:
+#    KEEP    : label kept as-is from the source(s).
+#    KEEP*   : anterior-segment label kept to test fundus detectability.
+#    RENAME  : label renamed for clarity or to match clinical practice.
+#    DROP    : label removed (clinically irrelevant or absent in Algeria).
+#    NEW     : label added by the clinician — no source data, AL-only at start.
+#
+#  Lines starting with `_` (e.g. `_metadata`) are metadata, skipped by the
+#  loader.
+# =============================================================================
+
+_metadata:
+  authored_by: "Dr. Moataz Billah Mekki (supervising ophthalmologist)"
+  reconciled_with: ["RFMiD v1", "RFMiD v2", "ODIR", "Mendeley", "BRSet"]
+  last_updated: "2026-04-15"
+  language: "fr"
+  version: "1.0"
+  notes: |
+    Final version. Reflects the clinician's review of every label across the
+    five public retinal datasets. The action column ("Doctor's Decision") is
+    encoded in each entity's `notes` field for full audit traceability.
+
+# =============================================================================
+#  PATHOLOGIES (kind: PATH) — supervised classifier targets when frequent
+#  enough; rare ones routed via open-set + active learning queue.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+#  Vascular pathologies — diabetic retinopathy and its complications
+# ---------------------------------------------------------------------------
+
+DR:
+  kind: PATH
+  full_name: "Diabetic Retinopathy"
+  synonyms:
+    - "DR"
+    - "RD"
+    - "rétinopathie diabétique"
+    - "retinopathie diabetique"
+    - "diabetic retinopathy"
+  severity_scale: "ICDR"            # International Clinical DR scale: R0, R1, R2, R3, R4
+  severity_synonyms:
+    # Stage-specific terms encountered in clinical notes — extractor must
+    # populate the `severity` field of the PathologyMention, NOT create a
+    # separate pathology code.
+    R0: ["pas de RD", "RD absente"]
+    R1: ["RD non proliférante minime", "NPDR mild", "RDNP minime"]
+    R2: ["RD non proliférante modérée", "NPDR moderate", "RDNP modérée"]
+    R3: ["RD non proliférante sévère", "NPDR severe", "RDNP sévère", "RDNP préproliférante"]
+    R4: ["RD proliférante", "PDR", "RDP", "DR proliferante", "DR proliférante"]
+  source_datasets: ["RFMiD v1: DR", "RFMiD v2: DR", "Mendeley: DR", "BRSet: diabetic_retinopathy"]
+  ambiguous_with: ["Retinal_Detachment"]
+  notes: |
+    KEEP. Disambiguate against retinal detachment by surrounding tokens:
+    diabetes-related vocabulary nearby ⇒ DR; structural vocabulary
+    (décollement, déchirure, macula off) ⇒ Retinal_Detachment.
+    PDR / RDP / "DR proliférante" are the R4 stage of DR — extractor must
+    set severity="R4", NOT emit a separate pathology code.
+    ODIR "D" rows (1,608) removed: systemic diabetes ≠ DR.
+
+# ---------------------------------------------------------------------------
+#  Macular pathologies
+# ---------------------------------------------------------------------------
+
+ARMD:
+  kind: PATH
+  full_name: "Age-Related Macular Degeneration"
+  synonyms:
+    - "ARMD"
+    - "DMLA"
+    - "AMD"
+    - "age-related macular degeneration"
+    - "dégénérescence maculaire"
+    - "degenerescence maculaire"
+  severity_scale: "AREDS_simplified"
+  severity_synonyms:
+    # AREDS simplified severity scale used in clinical practice:
+    #   dry_early     = small/medium drusen, no pigmentary changes
+    #   dry_intermediate = large drusen and/or pigmentary changes
+    #   dry_advanced  = geographic atrophy (GA)
+    #   wet           = choroidal neovascularization (CNV / exudative)
+    # French notes often use just "sèche"/"humide" or "atrophique"/"exsudative"
+    dry_early: ["DMLA sèche débutante", "DMLA débutante", "early AMD", "DMLA sèche stade 1"]
+    dry_intermediate: ["DMLA sèche intermédiaire", "DMLA intermédiaire", "intermediate AMD"]
+    dry_advanced: ["DMLA atrophique", "atrophie géographique", "geographic atrophy", "GA", "DMLA sèche avancée"]
+    wet: ["DMLA exsudative", "DMLA humide", "DMLA néovasculaire", "wet AMD", "exudative AMD", "DMLA exudative"]
+    unspecified: ["DMLA", "AMD", "ARMD"]
+  source_datasets: ["RFMiD v1: ARMD", "RFMiD v2: ARMD", "ODIR: A", "BRSet: amd"]
+  notes: |
+    KEEP. Unified from A / amd across sources. Severity must be extracted as
+    a field: dry_early / dry_intermediate / dry_advanced / wet / unspecified.
+    "DMLA humide" ⇒ severity="wet". "DMLA sèche" without further detail ⇒
+    severity="dry_early" (conservative default).
+
+ME:
+  kind: PATH
+  full_name: "Macular Edema"
+  synonyms:
+    - "ME"
+    - "OM"
+    - "œdème maculaire"
+    - "oedeme maculaire"
+    - "macular edema"
+    - "macular oedema"
+  source_datasets: ["RFMiD v2: ME", "BRSet: macular_edema"]
+  notes: "KEEP. Unified from macular_edema."
+
+CME:
+  kind: PATH
+  full_name: "Cystoid Macular Edema"
+  synonyms:
+    - "CME"
+    - "OMC"
+    - "œdème maculaire cystoïde"
+    - "cystoid macular edema"
+  source_datasets: ["RFMiD v1: CME", "RFMiD v2: CME"]
+  notes: "KEEP."
+
+MHL:
+  kind: PATH
+  full_name: "Macular Hole"
+  synonyms:
+    - "MHL"
+    - "trou maculaire"
+    - "macular hole"
+  source_datasets: ["RFMiD v1: MHL", "RFMiD v2: MHL"]
+  notes: "KEEP."
+
+ERM:
+  kind: PATH
+  full_name: "Epiretinal Membrane"
+  synonyms:
+    - "ERM"
+    - "MER"
+    - "membrane épimaculaire"
+    - "membrane epimaculaire"
+    - "epiretinal membrane"
+  source_datasets: ["RFMiD v1: ERM", "RFMiD v2: ERM"]
+  notes: "KEEP. Exists in Algeria (MER / membrane épimaculaire)."
+
+CSCR:
+  kind: PATH
+  full_name: "Central Serous Chorioretinopathy"
+  synonyms:
+    - "CSCR"
+    - "CSR"
+    - "choriorétinopathie séreuse centrale"
+    - "central serous chorioretinopathy"
+  source_datasets: ["RFMiD v1: CSR", "RFMiD v2: CSR", "Mendeley: CSCR"]
+  notes: "RENAME. CSR unified to CSCR (same pathology, confirmed by doctor)."
+
+CRS:
+  kind: PATH
+  full_name: "Chorioretinitis"
+  synonyms:
+    - "CRS"
+    - "choriorétinite"
+    - "choroidoretinite"
+    - "chorioretinitis"
+  source_datasets: ["RFMiD v1: CRS", "RFMiD v2: CRS"]
+  notes: "KEEP. Different from CSCR — not merged."
+
+# ---------------------------------------------------------------------------
+#  Vascular emergencies — RARE in this corpus. Must be flagged at inference,
+#  not used as supervised targets until the AL queue accumulates examples.
+# ---------------------------------------------------------------------------
+
+CRAO:
+  kind: PATH
+  full_name: "Central Retinal Artery Occlusion"
+  synonyms:
+    - "CRAO"
+    - "OACR"
+    - "occlusion de l'artère centrale de la rétine"
+    - "central retinal artery occlusion"
+  source_datasets: ["RFMiD v1: CRAO", "RFMiD v2: CRAO"]
+  notes: "KEEP. Sight-threatening emergency — single-shot in current clinic corpus."
+
+BRAO:
+  kind: PATH
+  full_name: "Branch Retinal Artery Occlusion"
+  synonyms:
+    - "BRAO"
+    - "OABR"
+    - "occlusion de branche artérielle rétinienne"
+    - "branch retinal artery occlusion"
+  source_datasets: ["RFMiD v1: BRAO"]
+  notes: "KEEP. Currently zero examples in clinic corpus — AL-only."
+
+CRVO:
+  kind: PATH
+  full_name: "Central Retinal Vein Occlusion"
+  synonyms:
+    - "CRVO"
+    - "OVCR"
+    - "occlusion de la veine centrale de la rétine"
+    - "central retinal vein occlusion"
+  source_datasets: ["RFMiD v1: CRVO", "RFMiD v2: CRVO"]
+  notes: "KEEP."
+
+BRVO:
+  kind: PATH
+  full_name: "Branch Retinal Vein Occlusion"
+  synonyms:
+    - "BRVO"
+    - "OVBR"
+    - "occlusion de branche veineuse rétinienne"
+    - "branch retinal vein occlusion"
+  source_datasets: ["RFMiD v1: BRVO", "RFMiD v2: BRVO"]
+  notes: "KEEP."
+
+Vascular_Occlusion:
+  kind: PATH
+  full_name: "Vascular Occlusion (General / Unspecified)"
+  synonyms:
+    - "vascular occlusion"
+    - "occlusion vasculaire"
+    - "occlusion vasculaire rétinienne"
+  source_datasets: ["BRSet: vascular_occlusion"]
+  notes: "KEEP. General label when arterial vs venous unspecified."
+
+Retinal_Embolism:
+  kind: PATH
+  full_name: "Retinal Embolism (Hollenhorst Plaque)"
+  synonyms:
+    - "Retinal Embolism"
+    - "Hollenhorst plaque"
+    - "plaque de Hollenhorst"
+    - "embolie rétinienne"
+  source_datasets: ["RFMiD v1: PLQ"]
+  notes: "RENAME. PLQ → Retinal_Embolism (sign of arterial embolism, per doctor)."
+
+# ---------------------------------------------------------------------------
+#  Retinal detachment / tears
+# ---------------------------------------------------------------------------
+
+Retinal_Detachment:
+  kind: PATH
+  full_name: "Retinal Detachment"
+  synonyms:
+    - "Retinal_Detachment"
+    - "RD"                          # Ambiguous — see DR notes
+    - "décollement de rétine"
+    - "decollement de retine"
+    - "retinal detachment"
+    - "RD macula off"
+    - "RD macula on"
+  source_datasets: ["RFMiD v2: RD", "Mendeley: Retinal_Detachment", "BRSet: retinal_detachment"]
+  ambiguous_with: ["DR"]
+  notes: "KEEP. Unified from RD / retinal_detachment."
+
+RTR:
+  kind: PATH
+  full_name: "Retinal Tears"
+  synonyms:
+    - "RTR"
+    - "déchirure rétinienne"
+    - "retinal tears"
+  source_datasets: ["RFMiD v2: RTR"]
+  notes: "KEEP."
+
+GRT:
+  kind: PATH
+  full_name: "Giant Retinal Tear"
+  synonyms:
+    - "GRT"
+    - "déchirure géante"
+    - "giant retinal tear"
+  source_datasets: ["RFMiD v2: GRT"]
+  notes: "KEEP."
+
+RHL:
+  kind: PATH
+  full_name: "Retinal Holes"
+  synonyms:
+    - "RHL"
+    - "trou rétinien"
+    - "retinal holes"
+  source_datasets: ["RFMiD v2: RHL"]
+  notes: "KEEP."
+
+RT:
+  kind: PATH
+  full_name: "Retinal Traction"
+  synonyms:
+    - "RT"
+    - "traction rétinienne"
+    - "retinal traction"
+  source_datasets: ["RFMiD v1: RT", "RFMiD v2: RT"]
+  notes: "KEEP."
+
+# ---------------------------------------------------------------------------
+#  Optic nerve and disc
+# ---------------------------------------------------------------------------
+
+Glaucoma:
+  kind: PATH
+  full_name: "Glaucoma"
+  synonyms:
+    - "glaucome"
+    - "glaucoma"
+    - "GPAO"                        # Glaucome Primitif à Angle Ouvert
+    - "POAG"
+    - "GNT"                         # Glaucome à Tension Normale
+    - "NTG"                         # Normal Tension Glaucoma
+    - "GFA"                         # Glaucome à Angle Fermé
+    - "GAF"
+  severity_scale: "glaucoma_fundus"
+  severity_synonyms:
+    # Fundus-based grading (cup-disc ratio + nerve fibre layer):
+    suspect: ["glaucome suspect", "suspect glaucomateux", "CDR limite", "C/D 0.5", "excavation suspecte"]
+    mild: ["glaucome débutant", "GPAO débutant", "glaucome initial", "CDR 0.5-0.6", "C/D 0.6"]
+    moderate: ["glaucome modéré", "GPAO modéré", "CDR 0.7", "C/D 0.7", "excavation 0.7"]
+    severe: ["glaucome avancé", "glaucome sévère", "GPAO sévère", "CDR 0.8", "CDR 0.9", "C/D 0.9", "excavation totale"]
+    end_stage: ["glaucome terminal", "atrophie optique glaucomateuse", "glaucome absolu"]
+    unspecified: ["glaucome", "GPAO", "POAG"]
+  source_datasets: ["ODIR: G", "Mendeley: Glaucoma"]
+  notes: |
+    KEEP. Fundus-observable through cup-disc ratio (CDR). Notes often mention
+    the CDR numerically ("C/D 0.7", "excavation 7/10") — extractor should
+    map these to the closest severity grade. When only "glaucome" is written
+    without further detail, set severity="unspecified".
+
+ODC:
+  kind: SIGN
+  full_name: "Optic Disc Cupping"
+  synonyms:
+    - "ODC"
+    - "excavation papillaire"
+    - "increased cup-disc"
+    - "cup-disc ratio"
+  source_datasets: ["RFMiD v1: ODC", "RFMiD v2: ODC", "BRSet: increased_cup_disc"]
+  notes: "KEEP. Unified from increased_cup_disc."
+
+ODP:
+  kind: SIGN
+  full_name: "Optic Disc Pallor"
+  synonyms:
+    - "ODP"
+    - "pâleur papillaire"
+    - "optic disc pallor"
+  source_datasets: ["RFMiD v1: ODP", "RFMiD v2: ODP"]
+  notes: "KEEP."
+
+ODPM:
+  kind: PATH
+  full_name: "Optic Disc Pit Maculopathy"
+  synonyms:
+    - "ODPM"
+    - "OPDM"
+    - "fossette colobomateuse"
+  source_datasets: ["RFMiD v1: ODPM", "RFMiD v2: OPDM"]
+  notes: "RENAME. OPDM unified to ODPM."
+
+Disc_Edema:
+  kind: SIGN
+  full_name: "Optic Disc Edema"
+  synonyms:
+    - "Disc_Edema"
+    - "ODE"
+    - "œdème papillaire"
+    - "oedeme papillaire"
+    - "papilledema"
+  source_datasets: ["RFMiD v1: ODE", "RFMiD v2: ODE", "Mendeley: Disc_Edema"]
+  notes: "RENAME. ODE / Disc_Edema unified to Disc_Edema."
+
+"ON":
+  kind: PATH
+  full_name: "Optic Neuritis"
+  synonyms:
+    - "ON"
+    - "névrite optique"
+    - "optic neuritis"
+  source_datasets: ["RFMiD v2: ON"]
+  notes: "KEEP."
+
+AION:
+  kind: PATH
+  full_name: "Anterior Ischaemic Optic Neuropathy"
+  synonyms:
+    - "AION"
+    - "neuropathie optique ischémique antérieure"
+    - "anterior ischaemic optic neuropathy"
+  source_datasets: ["RFMiD v1: AION", "RFMiD v2: AION"]
+  notes: "KEEP."
+
+HIC:
+  kind: PATH
+  full_name: "Intracranial Hypertension"
+  synonyms:
+    - "HIC"
+    - "IIH"
+    - "hypertension intracrânienne"
+    - "intracranial hypertension"
+  source_datasets: ["RFMiD v2: IIH"]
+  notes: "RENAME. IIH → HIC (idiopathic qualifier cannot be confirmed from FO)."
+
+TD:
+  kind: SIGN
+  full_name: "Tilted Disc"
+  synonyms:
+    - "TD"
+    - "papille oblique"
+    - "tilted disc"
+  source_datasets: ["RFMiD v1: TD", "RFMiD v2: TD"]
+  notes: "KEEP."
+
+ST:
+  kind: SIGN
+  full_name: "Optociliary Shunt"
+  synonyms:
+    - "ST"
+    - "shunt optociliaire"
+    - "optociliary shunt"
+  source_datasets: ["RFMiD v1: ST", "RFMiD v2: ST"]
+  notes: "KEEP."
+
+# ---------------------------------------------------------------------------
+#  Choroidal / pigmentary / dystrophies
+# ---------------------------------------------------------------------------
+
+Choroidosis:
+  kind: PATH
+  full_name: "Myopic Choroidosis"
+  synonyms:
+    - "Choroidosis"
+    - "TSLN"
+    - "choroïdose myopique"
+    - "choroidose myopique"
+    - "myopic choroidosis"
+  source_datasets: ["RFMiD v1: TSLN", "RFMiD v2: TSLN"]
+  notes: "RENAME. TSLN → Choroidosis (choroïdose myopique, per doctor)."
+
+Myopia:
+  kind: PATH
+  full_name: "Degenerative Myopia"
+  synonyms:
+    - "Myopia"
+    - "MYA"
+    - "M"
+    - "myopie dégénérative"
+    - "myopic fundus"
+    - "myopie forte"
+  source_datasets: ["RFMiD v1: MYA", "RFMiD v2: MYA", "ODIR: M", "Mendeley: Myopia", "BRSet: myopic_fundus"]
+  notes: "KEEP. Unified from MYA / M / myopic_fundus."
+
+CB:
+  kind: PATH
+  full_name: "Coloboma"
+  synonyms:
+    - "CB"
+    - "colobome"
+    - "coloboma"
+  source_datasets: ["RFMiD v1: CB", "RFMiD v2: CB"]
+  notes: "KEEP."
+
+CF:
+  kind: SIGN
+  full_name: "Choroidal Folds"
+  synonyms:
+    - "CF"
+    - "plis choroïdiens"
+    - "choroidal folds"
+  source_datasets: ["RFMiD v1: CF", "RFMiD v2: CF"]
+  notes: "KEEP."
+
+CNV:
+  kind: PATH
+  full_name: "Choroidal Neovascularization"
+  synonyms:
+    - "CNV"
+    - "néovaisseaux choroïdiens"
+    - "choroidal neovascularization"
+  source_datasets: ["RFMiD v2: CNV"]
+  notes: |
+    KEEP. CNV is a SIGN of disease (e.g., wet ARMD), but in absence of an
+    underlying named pathology it should be promoted to a standalone diagnosis.
+    Handled by the `promote_to_diagnosis` field of the extraction schema.
+
+Stries_Angioides:
+  kind: PATH
+  full_name: "Stries Angioïdes"
+  synonyms:
+    - "stries angioïdes"
+    - "stries angioides"
+    - "angioid streaks"
+  source_datasets: []
+  notes: |
+    NEW. Added by doctor — replaces PTCR conceptually. No source data.
+    AL-only at start.
+
+Maladie_Best:
+  kind: PATH
+  full_name: "Best Disease"
+  synonyms:
+    - "Maladie de Best"
+    - "Best disease"
+    - "vitelliform macular dystrophy"
+  source_datasets: []
+  notes: "NEW. Added by doctor — not in any source dataset. AL-only."
+
+Maladie_Stargardt:
+  kind: PATH
+  full_name: "Stargardt Disease"
+  synonyms:
+    - "Maladie de Stargardt"
+    - "Stargardt"
+    - "Stargardt disease"
+    - "fundus flavimaculatus"
+  source_datasets: []
+  notes: "NEW. Added by doctor — not in any source dataset. AL-only."
+
+Retinitis_Pigmentosa:
+  kind: PATH
+  full_name: "Retinitis Pigmentosa"
+  synonyms:
+    - "Retinitis_Pigmentosa"
+    - "RP"
+    - "rétinite pigmentaire"
+    - "retinitis pigmentosa"
+  source_datasets: ["RFMiD v1: RP", "RFMiD v2: RP", "Mendeley: Retinitis_Pigmentosa"]
+  notes: "KEEP. Unified from RP."
+
+RPEC:
+  kind: SIGN
+  full_name: "RPE Changes"
+  synonyms:
+    - "RPEC"
+    - "altérations de l'EPR"
+    - "RPE changes"
+  source_datasets: ["RFMiD v1: RPEC", "RFMiD v2: RPEC"]
+  notes: "KEEP."
+
+HPED:
+  kind: PATH
+  full_name: "Haemorrhagic Pigment Epithelial Detachment"
+  synonyms:
+    - "HPED"
+    - "DEP hémorragique"
+    - "haemorrhagic PED"
+  source_datasets: ["RFMiD v1: HPED", "RFMiD v2: HPED"]
+  notes: "KEEP."
+
+Nevus:
+  kind: SIGN
+  full_name: "Choroidal / Retinal Nevus"
+  synonyms:
+    - "nevus"
+    - "naevus choroïdien"
+    - "choroidal nevus"
+  source_datasets: ["BRSet: nevus"]
+  notes: "KEEP."
+
+# ---------------------------------------------------------------------------
+#  Inflammatory / infectious
+# ---------------------------------------------------------------------------
+
+Uveite:
+  kind: PATH
+  full_name: "Uveitis"
+  synonyms:
+    - "Uveite"
+    - "uvéite"
+    - "uveite"
+    - "uveitis"
+  source_datasets: []
+  notes: "NEW. Added by doctor — frequent in Algeria. No source data."
+
+VS:
+  kind: PATH
+  full_name: "Vasculitis"
+  synonyms:
+    - "VS"
+    - "vascularite rétinienne"
+    - "vasculitis"
+  source_datasets: ["RFMiD v1: VS", "RFMiD v2: VS"]
+  notes: "KEEP."
+
+RS:
+  kind: PATH
+  full_name: "Retinitis"
+  synonyms:
+    - "RS"
+    - "rétinite"
+    - "retinitis"
+  source_datasets: ["RFMiD v1: RS", "RFMiD v2: RS"]
+  notes: "KEEP."
+
+Scar_Toxo:
+  kind: SIGN
+  full_name: "Toxoplasmosis Scar"
+  synonyms:
+    - "Scar_Toxo"
+    - "cicatrice toxoplasmique"
+    - "toxoplasmosis scar"
+  source_datasets: ["BRSet: scar"]
+  notes: "KEEP. BRSet 'scar' = toxoplasmosis (confirmed in paper). Split from MS."
+
+# ---------------------------------------------------------------------------
+#  Hypertensive / haemorrhagic retinopathies
+# ---------------------------------------------------------------------------
+
+HTN:
+  kind: PATH
+  full_name: "Hypertensive Retinopathy"
+  synonyms:
+    - "HTN"
+    - "rétinopathie hypertensive"
+    - "retinopathie hypertensive"
+    - "hypertensive retinopathy"
+    - "RH"                          # Rétinopathie Hypertensive
+    - "fond d'œil hypertensif"
+    - "FO hypertensif"
+  severity_scale: "Keith_Wagener_Barker"
+  severity_synonyms:
+    # Keith-Wagener-Barker (KWB) classification, grades I-IV:
+    #   I   = mild arteriolar narrowing
+    #   II  = + AV nicking, focal arteriolar constriction
+    #   III = + hemorrhages, exudates, cotton-wool spots
+    #   IV  = + papilledema (malignant hypertension)
+    grade_I: ["RH stade 1", "KWB I", "stade 1", "arteriolar narrowing", "rétrécissement artériolaire"]
+    grade_II: ["RH stade 2", "KWB II", "stade 2", "signe du croisement", "AV nicking", "croisement artério-veineux"]
+    grade_III: ["RH stade 3", "KWB III", "stade 3", "hémorragies et exsudats", "nodules cotonneux avec hémorragies"]
+    grade_IV: ["RH stade 4", "KWB IV", "stade 4", "œdème papillaire", "RH maligne", "HTA maligne"]
+    unspecified: ["rétinopathie hypertensive", "RH", "HTN"]
+  source_datasets: ["RFMiD v2: HTN", "BRSet: hypertensive_retinopathy"]
+  notes: |
+    KEEP. ODIR 'H' rows (128) removed: systemic HTA ≠ HTN retinopathy.
+    Severity follows Keith-Wagener-Barker grades I–IV. French notes often
+    say "stade X" or describe signs that map to a specific grade. When only
+    "rétinopathie hypertensive" without staging, set severity="unspecified".
+
+HR:
+  kind: PATH
+  full_name: "Haemorrhagic Retinopathy"
+  synonyms:
+    - "HR"
+    - "rétinopathie hémorragique"
+    - "haemorrhagic retinopathy"
+  source_datasets: ["RFMiD v1: HR", "RFMiD v2: HR"]
+  notes: "KEEP. Different from HTN."
+
+Retinal_Hemorrhage:
+  kind: SIGN
+  full_name: "Retinal Hemorrhage (Non-Diabetic)"
+  synonyms:
+    - "Retinal_Hemorrhage"
+    - "hémorragie rétinienne"
+    - "retinal hemorrhage"
+  source_datasets: ["BRSet: hemorrhage"]
+  notes: "KEEP. Unified from hemorrhage."
+
+PRH:
+  kind: SIGN
+  full_name: "Preretinal Haemorrhage"
+  synonyms:
+    - "PRH"
+    - "hémorragie pré-rétinienne"
+    - "preretinal haemorrhage"
+  source_datasets: ["RFMiD v1: PRH", "RFMiD v2: PRH"]
+  notes: "KEEP."
+
+VH:
+  kind: SIGN
+  full_name: "Vitreous Haemorrhage"
+  synonyms:
+    - "VH"
+    - "hémorragie intravitréenne"
+    - "vitreous haemorrhage"
+  source_datasets: ["RFMiD v1: VH"]
+  notes: "KEEP."
+
+# =============================================================================
+#  PHYSICAL SIGNS (kind: SIGN) — observable findings, used as features for
+#  grid-based annotation rather than as standalone classifier targets.
+# =============================================================================
+
+EDN:
+  kind: SIGN
+  full_name: "Hard Exudates"
+  synonyms:
+    - "EDN"
+    - "exsudats secs"
+    - "hard exudates"
+  source_datasets: ["RFMiD v1: EDN", "RFMiD v2: EDN"]
+  notes: "KEEP."
+
+CWS:
+  kind: SIGN
+  full_name: "Cotton-Wool Spots"
+  synonyms:
+    - "CWS"
+    - "nodules cotonneux"
+    - "cotton-wool spots"
+  source_datasets: ["RFMiD v1: CWS", "RFMiD v2: CWS"]
+  notes: "KEEP."
+
+DN:
+  kind: SIGN
+  full_name: "Drusens"
+  synonyms:
+    - "DN"
+    - "drusens"
+    - "drusen"
+  source_datasets: ["RFMiD v1: DN", "RFMiD v2: DN", "BRSet: drusens"]
+  notes: "KEEP. Unified from drusens."
+
+LS:
+  kind: SIGN
+  full_name: "Laser Scars"
+  synonyms:
+    - "LS"
+    - "cicatrices de laser"
+    - "laser scars"
+  source_datasets: ["RFMiD v1: LS", "RFMiD v2: LS"]
+  notes: "KEEP."
+
+MS:
+  kind: SIGN
+  full_name: "Macular Scar (general)"
+  synonyms:
+    - "MS"
+    - "Macular_Scar"
+    - "cicatrice maculaire"
+    - "macular scar"
+  source_datasets: ["RFMiD v1: MS", "RFMiD v2: MS", "Mendeley: Macular_Scar"]
+  notes: "KEEP. BRSet scar rows split to Scar_Toxo (toxo-specific)."
+
+MicroA:
+  kind: SIGN
+  full_name: "Microaneurysm"
+  synonyms:
+    - "MicroA"
+    - "microanévrismes"
+    - "microaneurysm"
+  source_datasets: ["RFMiD v2: MCA"]
+  notes: "KEEP. RFMiD2 MCA → MicroA."
+
+MacroA:
+  kind: SIGN
+  full_name: "Macroaneurysm"
+  synonyms:
+    - "MacroA"
+    - "macroanévrisme"
+    - "macroaneurysm"
+  source_datasets: ["RFMiD v1: MCA"]
+  notes: "KEEP. MCA split: RFMiD1 MCA → MacroA."
+
+MH:
+  kind: SIGN
+  full_name: "Media Haze"
+  synonyms:
+    - "MH"
+    - "trouble des milieux"
+    - "media haze"
+  source_datasets: ["RFMiD v1: MH", "RFMiD v2: MH"]
+  notes: "KEEP."
+
+MNF:
+  kind: SIGN
+  full_name: "Myelinated Nerve Fibres"
+  synonyms:
+    - "MNF"
+    - "fibres à myéline"
+    - "myelinated nerve fibres"
+  source_datasets: ["RFMiD v1: MNF"]
+  notes: "KEEP. Normal anatomical variant."
+
+CL:
+  kind: SIGN
+  full_name: "Collateral Vessels"
+  synonyms:
+    - "CL"
+    - "vaisseaux collatéraux"
+    - "collateral vessels"
+  source_datasets: ["RFMiD v1: CL", "RFMiD v2: CL"]
+  notes: "KEEP."
+
+TV:
+  kind: SIGN
+  full_name: "Tortuous Vessels"
+  synonyms:
+    - "TV"
+    - "vaisseaux tortueux"
+    - "tortuous vessels"
+  source_datasets: ["RFMiD v1: TV", "RFMiD v2: TV"]
+  notes: "KEEP."
+
+AH:
+  kind: SIGN
+  full_name: "Asteroid Hyalosis"
+  synonyms:
+    - "AH"
+    - "hyalose astéroïde"
+    - "asteroid hyalosis"
+  source_datasets: ["RFMiD v1: AH", "RFMiD v2: AH"]
+  notes: "KEEP."
+
+PT:
+  kind: SIGN
+  full_name: "Parafoveal Telangiectasia (MACTEL)"
+  synonyms:
+    - "PT"
+    - "MACTEL"
+    - "télangiectasies parafovéales"
+  source_datasets: ["RFMiD v1: PT"]
+  notes: "KEEP."
+
+SOFE:
+  kind: SIGN
+  full_name: "Silicone Oil-Filled Eye"
+  synonyms:
+    - "SOFE"
+    - "œil tamponné par huile de silicone"
+    - "silicone oil-filled eye"
+  source_datasets: ["RFMiD v2: SOFE"]
+  notes: "KEEP. Post-vitrectomy state, not a pathology."
+
+# =============================================================================
+#  ANTERIOR-SEGMENT LABELS (kind: PATH, anterior_segment: true)
+#  Kept to test fundus detectability — the supervising clinician marked
+#  these as worth investigating because they may have visible fundus
+#  effects. The classifier may learn negative associations (sharper retinal
+#  detail when no cataract, etc.).
+# =============================================================================
+
+Cataract:
+  kind: PATH
+  full_name: "Cataract"
+  anterior_segment: true
+  synonyms:
+    - "Cataract"
+    - "cataracte"
+    - "cataract"
+  source_datasets: ["ODIR: C"]
+  notes: "KEEP*. Anterior segment — kept to test fundus detectability."
+
+Pterygium:
+  kind: PATH
+  full_name: "Pterygium"
+  anterior_segment: true
+  synonyms:
+    - "Pterygium"
+    - "ptérygion"
+    - "pterygion"
+  source_datasets: ["Mendeley: Pterygium"]
+  notes: "KEEP*. Anterior segment — kept to test fundus detectability."
+
+# =============================================================================
+#  CONTROL CLASSES
+# =============================================================================
+
+Healthy:
+  kind: SIGN
+  full_name: "Normal / Healthy Fundus"
+  synonyms:
+    - "Healthy"
+    - "WNL"
+    - "RAS"                         # "Rien À Signaler"
+    - "FO normal"
+    - "fond d'œil normal"
+    - "normal fundus"
+  source_datasets:
+    - "RFMiD v1: Disease_Risk=0"
+    - "RFMiD v2: WNL"
+    - "ODIR: N"
+    - "Mendeley: Healthy"
+  notes: "KEEP. Unified from all normal labels."
+
+Other:
+  kind: PATH
+  full_name: "Other / Unspecified Pathology"
+  synonyms:
+    - "Other"
+    - "autre pathologie"
+    - "other"
+  source_datasets: ["ODIR: O", "BRSet: other"]
+  notes: "KEEP. Unspecified pathology — escalates to clinician via HITL."
+
+# =============================================================================
+#  DROPPED LABELS (documented for the audit trail; NOT loaded by the pipeline)
+# =============================================================================
+
+_dropped_labels:
+  ODIR_D:
+    full_name: "Diabetes (Systemic)"
+    source_datasets: ["ODIR: D"]
+    rows_removed: 1608
+    reason: "Systemic diagnosis ≠ DR. Cannot infer from fundus alone."
+  ODIR_H:
+    full_name: "Hypertension (Systemic)"
+    source_datasets: ["ODIR: H"]
+    rows_removed: 128
+    reason: "Systemic diagnosis ≠ HTN retinopathy. Cannot infer from fundus alone."
+  Cysticercosis:
+    full_name: "Ocular Cysticercosis"
+    source_datasets: ["RFMiD v2: CSC"]
+    reason: "Does not exist in Algeria (confirmed by doctor)."
+  PTCR:
+    full_name: "Post-Traumatic Choroidal Rupture"
+    source_datasets: ["RFMiD v1: PTCR"]
+    reason: "Unlikely in Algerian population. Replaced conceptually by Stries_Angioides."
+
+# =============================================================================
+#  PROCEDURAL / WORKFLOW MARKERS — not pathologies, used as exclusion filters
+# =============================================================================
+
+OCT_DONE:
+  kind: SIGN
+  full_name: "OCT Performed (procedural marker)"
+  procedural: true
+  synonyms:
+    - "OCT"
+    - "OCT maculaire"
+    - "OCT papillaire"
+  source_datasets: []
+  notes: "Procedural marker — not a pathology."
+
+INJECTION:
+  kind: SIGN
+  full_name: "Intravitreal Injection (procedural marker)"
+  procedural: true
+  synonyms:
+    - "IVT"
+    - "injection intra-vitréenne"
+    - "anti-VEGF"
+    - "Lucentis"
+    - "Avastin"
+    - "Eylea"
+  source_datasets: []
+  notes: "Procedural marker — not a pathology. Often co-occurs with ME / ARMD."
+
+LASER_TREATMENT:
+  kind: SIGN
+  full_name: "Laser Treatment Performed (procedural marker)"
+  procedural: true
+  synonyms:
+    - "PRP"
+    - "panphotocoagulation"
+    - "panphotocoagulation rétinienne"
+    - "laser PRP"
+    - "photocoagulation"
+    - "photocoagulation panrétinienne"
+    - "laser argon"
+  source_datasets: []
+  notes: |
+    Procedural marker indicating laser was performed — a treatment, not a
+    pathology. The visible after-effects on the fundus are captured by the
+    LS (Laser Scars) entity. Extractors must NOT promote this marker to a
+    diagnosis: a note saying "PRP fait" still requires a separate
+    pathology mention (typically DR with severity R4).
+
+REFRACTION:
+  kind: SIGN
+  full_name: "Refraction Note"
+  procedural: true
+  synonyms:
+    - "myopie"
+    - "hypermétropie"
+    - "hypermetropie"
+    - "astigmatisme"
+    - "astigmatism"
+  source_datasets: []
+  notes: "Procedural noise — refraction-only notes are filtered out."
+
+DRY_EYE:
+  kind: SIGN
+  full_name: "Dry Eye"
+  procedural: true
+  synonyms:
+    - "sécheresse oculaire"
+    - "secheresse oculaire"
+    - "dry eye"
+  source_datasets: []
+  notes: "Anterior-segment finding, filtered out."
+
+SCHEDULES:
+  kind: SIGN
+  full_name: "Scheduling Marker"
+  procedural: true
+  synonyms:
+    - "revoir"
+    - "rdv"
+    - "RDV dans"
+    - "revue dans"
+    - "controle dans"
+    - "contrôle dans"
+  source_datasets: []
+  notes: "Scheduling marker — strongest noise signal in the corpus."
+
+
+
+
+
+# ---------------------------------------------------------------------------
+#  Cornea — anterior segment
+# ---------------------------------------------------------------------------
+
+Keratoconus:
+  kind: PATH
+  full_name: "Keratoconus"
+  anterior_segment: true
+  synonyms:
+    - "kératocône"
+    - "keratocone"
+    - "kératoconus"
+    - "keratoconus"
+    - "KC"
+  source_datasets: []
+  notes: |
+    NEW. Frequent in Algerian corpus. Anterior segment — kept for label
+    completeness; not used as a fundus image classification target.
+
+Keratitis:
+  kind: PATH
+  full_name: "Keratitis"
+  anterior_segment: true
+  synonyms:
+    - "kératite"
+    - "keratite"
+    - "keratitis"
+    - "kératite bactérienne"
+    - "kératite virale"
+    - "kératite amibienne"
+    - "HSK"
+  source_datasets: []
+  notes: "NEW. Anterior segment infection."
+
+Corneal_Edema:
+  kind: PATH
+  full_name: "Corneal Edema"
+  anterior_segment: true
+  synonyms:
+    - "œdème de cornée"
+    - "oedeme de cornee"
+    - "œdème cornéen"
+    - "corneal edema"
+    - "cornée œdématiée"
+  source_datasets: []
+  notes: "NEW. Anterior segment, often post-DMEK or endothelial dysfunction."
+
+Corneal_Scar:
+  kind: PATH
+  full_name: "Corneal Scar / Opacity"
+  anterior_segment: true
+  synonyms:
+    - "taie cornéenne"
+    - "leucome"
+    - "corneal scar"
+    - "opacité cornéenne"
+    - "cicatrice cornéenne"
+  source_datasets: []
+  notes: "NEW. Anterior segment opacity."
+
+Corneal_Ulcer:
+  kind: PATH
+  full_name: "Corneal Ulcer"
+  anterior_segment: true
+  synonyms:
+    - "ulcère cornéen"
+    - "ulcere corneen"
+    - "corneal ulcer"
+    - "abcès cornéen"
+    - "abces corneen"
+  source_datasets: []
+  notes: "NEW. Anterior segment."
+
+# ---------------------------------------------------------------------------
+#  Conjunctiva / Lid — anterior segment
+# ---------------------------------------------------------------------------
+
+Conjunctivitis:
+  kind: PATH
+  full_name: "Conjunctivitis"
+  anterior_segment: true
+  synonyms:
+    - "conjonctivite"
+    - "conjunctivitis"
+    - "conjonctivite bactérienne"
+    - "conjonctivite virale"
+    - "conjonctivite allergique"
+    - "conj allergique"
+    - "conj allgq"
+  source_datasets: []
+  notes: "NEW. Most frequent missed pathology in audit. Anterior segment."
+
+MGD:
+  kind: PATH
+  full_name: "Meibomian Gland Dysfunction"
+  anterior_segment: true
+  synonyms:
+    - "MGD"
+    - "meibomite"
+    - "dysfonction meibomienne"
+    - "meibomian gland dysfunction"
+  source_datasets: []
+  notes: "NEW. Frequent in corpus. Anterior segment."
+
+Chalazion:
+  kind: PATH
+  full_name: "Chalazion"
+  anterior_segment: true
+  synonyms:
+    - "chalazion"
+    - "kyste palpébral"
+  source_datasets: []
+  notes: "NEW. Eyelid pathology."
+
+Stye:
+  kind: PATH
+  full_name: "Stye / Hordeolum"
+  anterior_segment: true
+  synonyms:
+    - "orgelet"
+    - "stye"
+    - "hordeolum"
+  source_datasets: []
+  notes: "NEW. Eyelid pathology."
+
+Blepharitis:
+  kind: PATH
+  full_name: "Blepharitis"
+  anterior_segment: true
+  synonyms:
+    - "blépharite"
+    - "blepharite"
+    - "blepharitis"
+  source_datasets: []
+  notes: "NEW. Eyelid pathology."
+
+Dry_Eye_Disease:
+  kind: PATH
+  full_name: "Dry Eye Disease"
+  anterior_segment: true
+  synonyms:
+    - "sécheresse oculaire"
+    - "secheresse oculaire"
+    - "dry eye"
+    - "DES"
+    - "syndrome sec"
+    - "œil sec"
+  source_datasets: []
+  notes: |
+    NEW. Promoted from procedural marker DRY_EYE to actual pathology code.
+    Frequent in corpus.
+
+# ---------------------------------------------------------------------------
+#  Pediatric / motility — anterior
+# ---------------------------------------------------------------------------
+
+Amblyopia:
+  kind: PATH
+  full_name: "Amblyopia"
+  anterior_segment: true
+  synonyms:
+    - "amblyopie"
+    - "amblyope"
+    - "amblyopia"
+  source_datasets: []
+  notes: "NEW. Pediatric/functional. Often co-occurs with strabismus or refractive error."
+
+Strabismus:
+  kind: PATH
+  full_name: "Strabismus"
+  anterior_segment: true
+  synonyms:
+    - "strabisme"
+    - "strabismus"
+    - "ésotropie"
+    - "exotropie"
+    - "esotropia"
+    - "exotropia"
+  source_datasets: []
+  notes: "NEW. Motility disorder."
+
+# ---------------------------------------------------------------------------
+#  Post-op states — procedural states, NOT pathologies but worth tracking
+# ---------------------------------------------------------------------------
+
+Post_Cataract_Surgery:
+  kind: SIGN
+  full_name: "Post-Cataract Surgery State"
+  anterior_segment: true
+  procedural: true
+  synonyms:
+    - "post pke"
+    - "pseudophake"
+    - "ICP"
+    - "implant intra-oculaire"
+    - "post phako"
+  source_datasets: []
+  notes: |
+    NEW. Marker that patient has had cataract surgery. Used to disambiguate
+    'cataracte' (pathology) from 'post-cataracte' (treated).
+
+Post_DMEK:
+  kind: SIGN
+  full_name: "Post-DMEK / Post-Corneal Transplant"
+  anterior_segment: true
+  procedural: true
+  synonyms:
+    - "DMEK"
+    - "DSAEK"
+    - "post DMEK"
+    - "post greffe de cornée"
+  source_datasets: []
+  notes: "NEW. Post-operative corneal transplant state."
+

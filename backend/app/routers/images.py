@@ -28,6 +28,7 @@ def _img_out(r: FundusImage, lock: ImageLock | None = None, patient: Patient | N
         capture_date=r.capture_date,
         status=r.status,
         uncertainty=r.uncertainty_score or 0.5,
+        model_urgency=r.model_urgency,
         file_url=f"/api/images/{r.id}/file",
         locked_by=lock.locked_by if lock else None,
         image_quality=r.image_quality,
@@ -38,7 +39,7 @@ def _img_out(r: FundusImage, lock: ImageLock | None = None, patient: Patient | N
 def list_images(
     status: str | None = Query(None),
     sort: str = Query("uncertainty"),
-    limit: int = 100,
+    limit: int = 2000,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
@@ -60,8 +61,29 @@ def list_images(
     q = db.query(FundusImage)
     if status:
         q = q.filter(FundusImage.status == status)
+    # Doctors with assigned images only see their own; admins see all
+    if user.role == "doctor" and hasattr(FundusImage, 'assigned_to'):
+        from sqlalchemy import or_
+        q = q.filter(
+            or_(FundusImage.assigned_to == user.id, FundusImage.assigned_to == None)
+        ).filter(
+            # If has assignment, only show assigned; if no assignment exists at all show unassigned P1/P2
+            or_(
+                FundusImage.assigned_to == user.id,
+                FundusImage.model_urgency.in_(["P1", "P2", "P3"])
+            )
+        )
+
     if sort == "uncertainty":
-        q = q.order_by(FundusImage.uncertainty_score.desc())
+        # P1 → P2 → P3 → P4/None, then by uncertainty desc within each group
+        from sqlalchemy import case
+        urgency_order = case(
+            (FundusImage.model_urgency == "P1", 1),
+            (FundusImage.model_urgency == "P2", 2),
+            (FundusImage.model_urgency == "P3", 3),
+            else_=4,
+        )
+        q = q.order_by(urgency_order, FundusImage.uncertainty_score.desc())
     elif sort == "date":
         q = q.order_by(FundusImage.capture_date.desc())
 

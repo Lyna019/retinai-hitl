@@ -59,21 +59,16 @@ async def _describe_with_retizero(image_id: str, file_path: str) -> str:
 # ─── vLLM / Gemma fallback ────────────────────────────────────────────────────
 
 _VLM_PROMPT = (
-    """You are an expert ophthalmologist examining a single fundus photograph.
-Your task: determine whether this image shows a NORMAL, HEALTHY fundus suitable as a healthy control for training a retinal-disease classifier.
-A NORMAL fundus must satisfy ALL of the following:
-  1. Clear, sharp optic disc with normal cup-to-disc ratio (< 0.5)
-  2. Healthy macula — no drusen, no edema, no pigmentary changes, no atrophy
-  3. Normal vasculature — no nicking, no occlusion, no hemorrhages, no exudates
-  4. No visible lesions, scars, or peripheral abnormalities
-  5. Adequate image quality for clinical assessment
-If ANY criterion fails, the image is NOT normal.
-Respond ONLY with this JSON — all text fields in French:
+    """Tu es un ophtalmologue expert analysant une photographie du fond d'œil.
+Décris ce que tu observes de manière clinique et précise en français.
+Identifie les pathologies présentes, les signes visibles (hémorragies, exsudats, drusen, néovaisseaux, etc.),
+la qualité de l'image, et l'état du disque optique, de la macula et des vaisseaux.
+Réponds UNIQUEMENT avec ce JSON :
 {
   "is_normal": true | false,
-  "confidence": <float 0–1>,
+  "confidence": <float 0-1>,
   "image_quality": "good" | "fair" | "poor",
-  "note": "<description clinique en français>"
+  "note": "<description clinique détaillée en français : pathologies détectées, signes observés, conclusion>"
 }
 """
 )
@@ -150,14 +145,16 @@ async def describe_image(
     if not img:
         raise HTTPException(404, "Image introuvable")
 
-    # Try RetiZero first; fall back to vLLM if configured and RetiZero fails
-    description = await _describe_with_retizero(image_id, img.file_path)
-
-    if description.startswith("[Erreur") and settings.vlm_service_url:
+    # Try Gemma4 VLM first (multimodal, richer descriptions); fall back to RetiZero if not configured
+    description = None
+    if settings.vlm_service_url:
         try:
             description = await _describe_with_vllm(img.file_path)
         except Exception as exc:
-            description = f"[Erreur VLM : {exc}]"
+            description = None  # fall through to RetiZero
+
+    if not description:
+        description = await _describe_with_retizero(image_id, img.file_path)
 
     # Persist only successful descriptions (never store error strings)
     if not description.startswith("["):

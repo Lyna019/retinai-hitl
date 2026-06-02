@@ -12,6 +12,13 @@ async function request(method, path, body, token) {
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
+  if (res.status === 401) {
+    // Session expired — force logout so user gets redirected to login
+    const { useAuthStore } = await import('./store')
+    useAuthStore.getState().logout?.()
+    window.location.href = '/login'
+    throw new Error('Session expirée — veuillez vous reconnecter')
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     const detail = err.detail

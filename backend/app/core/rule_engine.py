@@ -21,15 +21,34 @@ PRIORITY_LABEL = {
 
 # Minimal static catalog — in production pulled from DB.
 DISEASE_META = {
-    "DR": {"mechanism": "VASC", "gradable": True},
-    "GLAUC": {"mechanism": "STRUCT", "gradable": True},
-    "DMLA": {"mechanism": "DEGEN", "gradable": True},
-    "HTN_DR": {"mechanism": "VASC", "gradable": True},
-    "OACR": {"mechanism": "VASC", "gradable": False, "urgency_override": "P1"},
-    "ABACR": {"mechanism": "VASC", "gradable": False, "urgency_override": "P1"},
-    "NOIAA": {"mechanism": "VASC", "gradable": False, "urgency_override": "P1"},
-    "DR_MAC_OFF": {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
-    "GLAUC_AIGU": {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    # Gradable chronic diseases
+    "DR":        {"mechanism": "VASC",   "gradable": True},
+    "GLAUC":     {"mechanism": "STRUCT", "gradable": True},
+    "DMLA":      {"mechanism": "DEGEN",  "gradable": True},
+    "HTN_DR":    {"mechanism": "VASC",   "gradable": True},
+    # P1 — Urgence vitale (same-hour)
+    "OACR":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    "ABACR":     {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    "BRAO":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    "CRAO":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    "NOIAA":     {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    "AION":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P1"},
+    # P2 — Chirurgie du jour (same-day)
+    "DR_MAC_OFF":{"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    "RETDET":    {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    "Retinal_Detachment": {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    "RTR":       {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    "GRT":       {"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    "GLAUC_AIGU":{"mechanism": "STRUCT", "gradable": False, "urgency_override": "P2"},
+    # P3 — Suivi urgent (within days)
+    "UVEITE":    {"mechanism": "INFLAM", "gradable": False, "urgency_override": "P3"},
+    "Uveite":    {"mechanism": "INFLAM", "gradable": False, "urgency_override": "P3"},
+    "VS":        {"mechanism": "INFLAM", "gradable": False, "urgency_override": "P3"},
+    "CRVO":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P3"},
+    "OVCR":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P3"},
+    "BRVO":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P3"},
+    "CNV":       {"mechanism": "VASC",   "gradable": False, "urgency_override": "P3"},
+    "HPED":      {"mechanism": "VASC",   "gradable": False, "urgency_override": "P3"},
 }
 
 

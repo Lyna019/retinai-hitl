@@ -32,6 +32,7 @@ class ImageOut(BaseModel):
     capture_date: datetime | None = None
     status: str
     uncertainty: float        # renamed from uncertainty_score for frontend consistency
+    model_urgency: str | None = None  # P1 | P2 | P3 | None — from model prediction
     file_url: str
     locked_by: str | None = None
     image_quality: str | None = None

@@ -97,10 +97,16 @@ async def predict(
         )
         db.add(pred)
 
-        if uncertainty is not None:
+        if uncertainty is not None or top_k:
             img = db.query(FundusImage).filter(FundusImage.id == image_id).first()
             if img:
-                img.uncertainty_score = uncertainty
+                if uncertainty is not None:
+                    img.uncertainty_score = uncertainty
+                # Derive urgency from model's top_k predictions
+                if top_k:
+                    from ..core.rule_engine import compute_urgency
+                    urg = compute_urgency(top_k)
+                    img.model_urgency = urg.level if urg else None
 
         db.commit()
 

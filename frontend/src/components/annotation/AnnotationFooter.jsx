@@ -6,12 +6,18 @@ import { api } from '../../lib/api'
 
 export default function AnnotationFooter() {
   const token = useAuthStore((s) => s.token)
-  const { submit, canSubmit, currentImageId, annotation } = useAnnotationStore((s) => ({
-    submit: s.submitAnnotation,
-    canSubmit: (s.annotations[s.currentImageId]?.disease_labels || []).length > 0,
-    currentImageId: s.currentImageId,
-    annotation: s.annotations[s.currentImageId] || {},
-  }))
+  const { submit, canSubmit, isBadQuality, currentImageId, annotation } = useAnnotationStore((s) => {
+    const imgQuality = s.images.find((i) => i.id === s.currentImageId)?.image_quality
+    const isBad = imgQuality === 'poor'
+    const hasLabels = (s.annotations[s.currentImageId]?.disease_labels || []).length > 0
+    return {
+      submit: s.submitAnnotation,
+      canSubmit: hasLabels || isBad,
+      isBadQuality: isBad,
+      currentImageId: s.currentImageId,
+      annotation: s.annotations[s.currentImageId] || {},
+    }
+  })
 
   const [justSubmitted, setJustSubmitted] = useState(false)
   const [draftSaving, setDraftSaving] = useState(false)
@@ -91,7 +97,9 @@ export default function AnnotationFooter() {
       </div>
       <div className="mt-1.5 flex items-center justify-center mono text-[9px] text-ink-tertiary">
         {canSubmit
-          ? 'Appuyez sur ↵ pour soumettre'
+          ? isBadQuality && (annotation.disease_labels || []).length === 0
+            ? '⚠ Image non interprétable — qualité insuffisante'
+            : 'Appuyez sur ↵ pour soumettre'
           : 'Sélectionnez au moins une pathologie pour soumettre'}
       </div>
     </section>

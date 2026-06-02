@@ -106,6 +106,8 @@ class FundusImage(Base):
     dicom_study_uid   = Column(String(128))                         # DICOM SOP Instance UID
     status            = Column(String(16), default="pending")        # pending | in_progress | done
     uncertainty_score = Column(Float, default=0.5)
+    model_urgency     = Column(String(4))                            # P1 | P2 | P3 | None
+    assigned_to       = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
     image_quality     = Column(String(8))                            # good | fair | poor
     ingested_at       = Column(DateTime, default=datetime.utcnow)
 

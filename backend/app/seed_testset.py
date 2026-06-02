@@ -64,8 +64,8 @@ SEVERITY_MAP: dict[str, tuple[str, dict[int, str]]] = {
 }
 
 DEVICE_TO_MODALITY: dict[str, str] = {
-    "Daytona": "UWF",
-    "Triton":  "UWF",
+    "Daytona": "UWF",   # Optos Daytona — ultra-widefield
+    "Triton":  "CFP",   # Optos Triton — standard colour fundus photography
 }
 
 MODEL_VERSION_TAG = "v1.0.0-testset"

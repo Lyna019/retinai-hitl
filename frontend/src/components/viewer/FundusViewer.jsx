@@ -233,7 +233,7 @@ export default function FundusViewer({ image }) {
           <div className="relative aspect-square w-[min(82vh,82vw)] max-w-[760px]">
             <FundusImage imageId={image?.id} token={token} />
 
-            {showGradcam && <GradCamOverlay imageId={image?.id} />}
+            {showGradcam && <GradCamOverlay imageId={image?.id} cachedUrl={image?.predictions?.gradcam_url ?? null} />}
 
             {/* Grid overlay */}
             {showGrid && (
@@ -332,7 +332,6 @@ export default function FundusViewer({ image }) {
         <ShortcutHint k="H" desc="heatmap" />
         <ShortcutHint k="F" desc="recadrer" />
         <ShortcutHint k="↑↓←→" desc="déplacer" />
-        <ShortcutHint k="⇧ drag" desc="glisser" />
       </div>
     </div>
   )
@@ -421,13 +420,20 @@ function FundusImage({ imageId, token }) {
 
 /* ─── Grad-CAM heatmap overlay ─────────────────────────────────────────── */
 
-function GradCamOverlay({ imageId }) {
-  const [gradcamUrl, setGradcamUrl] = useState(null)
+function GradCamOverlay({ imageId, cachedUrl }) {
+  const [gradcamUrl, setGradcamUrl] = useState(cachedUrl)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const token = useAuthStore((s) => s.token)
 
   useEffect(() => {
+    // If we already have the URL from the cached predictions, use it directly
+    if (cachedUrl) {
+      setGradcamUrl(cachedUrl)
+      setFailed(false)
+      return
+    }
+    // Otherwise request generation
     if (!imageId || !token) return
     setLoading(true)
     setFailed(false)
@@ -439,7 +445,7 @@ function GradCamOverlay({ imageId }) {
       })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false))
-  }, [imageId, token])
+  }, [imageId, cachedUrl, token])
 
   if (loading) {
     return (

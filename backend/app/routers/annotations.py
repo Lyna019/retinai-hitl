@@ -120,18 +120,26 @@ def submit_annotation(
             ))
 
     # ── Disease labels ───────────────────────────────────────────────────
+    # If image quality is poor and no diagnoses provided, auto-flag as uninterpretable
+    effective_labels = list(payload.disease_labels)
+    if image.image_quality == "poor" and not effective_labels:
+        from ..schemas import DiseaseLabelIn
+        effective_labels = [DiseaseLabelIn(disease_code="Other", grade=None)]
+        if payload.notes_text is None:
+            payload = payload.model_copy(update={"notes_text": "Image non interprétable — qualité insuffisante."})
+
     old_labels = db.query(DiseaseLabel).filter(DiseaseLabel.annotation_id == annotation.id).all()
     old_snap = [{"code": l.disease_code, "grade": l.grade} for l in old_labels]
 
     db.query(DiseaseLabel).filter(DiseaseLabel.annotation_id == annotation.id).delete()
-    for lbl in payload.disease_labels:
+    for lbl in effective_labels:
         db.add(DiseaseLabel(
             annotation_id=annotation.id,
             disease_code=lbl.disease_code,
             grade=lbl.grade,
         ))
 
-    new_snap = [{"code": l.disease_code, "grade": l.grade} for l in payload.disease_labels]
+    new_snap = [{"code": l.disease_code, "grade": l.grade} for l in effective_labels]
     if not is_new and old_snap != new_snap:
         db.add(AuditLog(
             user_id=user.id,

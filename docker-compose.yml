@@ -33,7 +33,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-retinai}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retinai_dev}
       POSTGRES_DB: ${POSTGRES_DB:-retinai}
-      MODEL_SERVICE_URL: http://model-service:9000
+      MODEL_SERVICE_URL: ${MODEL_SERVICE_URL:-http://model-service:9000}
       VLM_SERVICE_URL: ${VLM_SERVICE_URL:-}
       VLM_API_KEY: ${VLM_API_KEY:-}
       VLM_KUBEFLOW_COOKIE: ${VLM_KUBEFLOW_COOKIE:-}
@@ -46,9 +46,8 @@ services:
       - retinai_audio:/app/data/audio
       - retinai_gradcam:/app/data/gradcam
       # ── Dataset import shortcuts ──────────────────────────────────────────
-      # Uncomment and adjust paths on each machine:
-      # - "/path/to/clinical:/tmp/clinical:ro"
-      # - "/path/to/downloads:/tmp/downloads:ro"
+      - "D:/Clinical Dataset:/tmp/clinical:ro"
+      - "D:/Downloads:/tmp/downloads:ro"
     ports:
       - "8000:8000"
 
