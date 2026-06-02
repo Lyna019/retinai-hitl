@@ -24,6 +24,46 @@ from .auth import require_admin, hash_password
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
+# ─── Curated dataset export ──────────────────────────────────────────────────
+
+@router.get("/dataset/download")
+def download_curated_dataset():
+    """Download the curated annotation CSV dataset."""
+    import os
+    from fastapi.responses import FileResponse
+    from ..core.dataset_export import DATASET_CSV
+    if not os.path.exists(DATASET_CSV):
+        raise HTTPException(404, "Aucune annotation soumise pour l'instant.")
+    return FileResponse(
+        path=DATASET_CSV,
+        media_type="text/csv",
+        filename="retinai_curated_dataset.csv",
+    )
+
+
+@router.get("/dataset/stats")
+def dataset_stats():
+    """Quick stats on the curated dataset."""
+    import os, csv
+    from ..core.dataset_export import DATASET_CSV
+    if not os.path.exists(DATASET_CSV):
+        return {"rows": 0, "path": DATASET_CSV}
+    with open(DATASET_CSV, encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    from collections import Counter
+    diseases = Counter()
+    for r in rows:
+        for code in r.get("disease_codes", "").split("|"):
+            if code:
+                diseases[code] += 1
+    return {
+        "rows": len(rows),
+        "path": DATASET_CSV,
+        "disease_distribution": dict(diseases.most_common(15)),
+        "doctors": list({r["doctor_username"] for r in rows}),
+    }
+
+
 # ─── Stats ──────────────────────────────────────────────────────────────────
 
 @router.get("/stats/progress")

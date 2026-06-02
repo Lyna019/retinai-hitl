@@ -237,6 +237,54 @@ def submit_annotation(
 
     db.commit()
 
+    # ── Curated dataset export (non-blocking) ────────────────────────────
+    try:
+        from ..core.dataset_export import append_annotation
+        from ..models import AnatomicalRegion
+        patient = db.query(Patient).filter(Patient.id == image.patient_id).first()
+
+        # Build rich regions payload: region name + full cell coords
+        regions_raw = []
+        for roi in db.query(RegionOfInterest).filter(RegionOfInterest.annotation_id == annotation.id).all():
+            # Get anatomical region name if linked
+            region_name = roi.custom_region_name or ""
+            if roi.anatomical_region_id:
+                ar = db.query(AnatomicalRegion).filter(AnatomicalRegion.id == roi.anatomical_region_id).first()
+                if ar:
+                    region_name = ar.name_fr or region_name
+            cells = [
+                {
+                    "lesion_code": c.lesion_code,
+                    "row":         c.row,
+                    "col":         c.col,
+                    "zoom_level":  c.zoom_level,
+                }
+                for c in db.query(GridCell).filter(GridCell.region_id == roi.id).all()
+            ]
+            regions_raw.append({"custom_region_name": region_name, "cells": cells})
+
+        # GradCAM verdict
+        gcv = db.query(GradCAMValidation).filter(GradCAMValidation.annotation_id == annotation.id).first()
+
+        append_annotation(
+            file_path=image.file_path,
+            patient_clinical_id=patient.clinical_id if patient else "",
+            eye=image.eye or "",
+            modality=image.modality or "",
+            capture_date=image.capture_date,
+            image_quality=image.image_quality,
+            gradcam_verdict=gcv.verdict if gcv else None,
+            disease_labels=label_dicts,
+            regions=regions_raw,
+            urgency_level=urgency.level if urgency else None,
+            notes_text=payload.notes_text,
+            doctor_username=user.username,
+            submitted_at=annotation.submitted_at,
+            time_spent_sec=payload.time_spent_sec,
+        )
+    except Exception:
+        pass  # never block submit
+
     # ── Hospital write-back (non-blocking) ───────────────────────────────
     try:
         from ..core.hospital_writeback import write_back_diagnosis

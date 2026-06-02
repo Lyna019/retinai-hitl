@@ -61,18 +61,10 @@ def list_images(
     q = db.query(FundusImage)
     if status:
         q = q.filter(FundusImage.status == status)
-    # Doctors with assigned images only see their own; admins see all
-    if user.role == "doctor" and hasattr(FundusImage, 'assigned_to'):
-        from sqlalchemy import or_
-        q = q.filter(
-            or_(FundusImage.assigned_to == user.id, FundusImage.assigned_to == None)
-        ).filter(
-            # If has assignment, only show assigned; if no assignment exists at all show unassigned P1/P2
-            or_(
-                FundusImage.assigned_to == user.id,
-                FundusImage.model_urgency.in_(["P1", "P2", "P3"])
-            )
-        )
+    # Doctors see ONLY their assigned images — zero overlap between doctors
+    # Admin sees everything
+    if user.role == "doctor":
+        q = q.filter(FundusImage.assigned_to == user.id)
 
     if sort == "uncertainty":
         # P1 → P2 → P3 → P4/None, then by uncertainty desc within each group
