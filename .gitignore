@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+.env.local
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Models & data — never commit large binaries
+model-service/checkpoints/
+retizero-service/checkpoints/
+backend/data/
+*.sqlite
+*.db
+
+# Claude
+.claude/
+
+# Calibration scripts
+model-service/calibration_check.py

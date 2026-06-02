@@ -1,0 +1,80 @@
+# Phase 1 — Backbone Screening experiments
+# Each entry overrides base.yaml
+
+B-01:
+  experiment_id: "B-01"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "resnet50", "224px", "cnn"]
+  model:
+    backbone: "resnet50"
+    family: "cnn"
+    pretrained: "imagenet"
+  data:
+    resolution: 224
+    batch_size: 32
+
+B-02:
+  experiment_id: "B-02"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "densenet121", "224px", "cnn"]
+  model:
+    backbone: "densenet121"
+    family: "cnn"
+    pretrained: "imagenet"
+  data:
+    resolution: 224
+    batch_size: 32
+
+B-03:
+  experiment_id: "B-03"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "efficientnet_b4", "224px", "advanced_cnn"]
+  model:
+    backbone: "efficientnet_b4"
+    family: "advanced_cnn"
+    pretrained: "imagenet"
+  data:
+    resolution: 224
+    batch_size: 32
+
+B-04:
+  experiment_id: "B-04"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "convnext_base", "224px", "modern_cnn"]
+  model:
+    backbone: "convnext_base"
+    family: "modern_cnn"
+    pretrained: "imagenet22k"
+  data:
+    resolution: 224
+    batch_size: 32
+
+B-05:
+  experiment_id: "B-05"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "vit_base", "224px", "transformer"]
+  model:
+    backbone: "vit_base_patch16_224"
+    family: "transformer"
+    pretrained: "imagenet21k"
+  data:
+    resolution: 224
+    batch_size: 16
+  # ViT-specific overrides
+  optimizer:
+    weight_decay: 0.05
+  vit:
+    warmup_epochs: 5
+    drop_path_rate: 0.1
+
+B-06:
+  experiment_id: "B-06"
+  phase: "phase1-backbone-screening"
+  tags: ["backbone", "swin_base", "224px", "transformer"]
+  model:
+    backbone: "swin_base_patch4_window7_224"
+    family: "transformer"
+    pretrained: "imagenet22k"
+  data:
+    resolution: 224
+    batch_size: 16

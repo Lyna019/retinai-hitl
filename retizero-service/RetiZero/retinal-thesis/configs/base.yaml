@@ -1,0 +1,137 @@
+# ============================================================
+# Base configuration — shared across ALL experiments
+# Override per-experiment in configs/experiments/*.yaml
+# ============================================================
+
+project:
+  name: "retinal-pathology-thesis"
+  entity: null  # Set your W&B entity/team name
+
+seed: 42
+
+# ---- Label taxonomy ----
+labels:
+  - "DR"
+  - "AMD"
+  - "Glaucoma"
+  - "Cataract"
+  - "Hypertension"
+  - "Myopia"
+  - "Other"
+  - "Normal"
+num_classes: 8
+min_samples_threshold: 50  # Labels below this → "Other"
+
+# ---- Paths ----
+paths:
+  data_root: "./data"
+  merged_csv: "./data/merged_labels.csv"
+  brset_csv: "./data/brset_labels.csv"
+  images_dir: "./data/images"
+  brset_images_dir: "./data/brset_images"
+  split_artifact: "./artifacts/splits.npz"
+  label_mapping: "./artifacts/label_mapping.json"
+  checkpoints: "./checkpoints"
+  gradcam_output: "./outputs/gradcam"
+
+# ---- Data split ----
+split:
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+# ---- Preprocessing ----
+preprocessing:
+  border_removal: true
+  clahe:
+    enabled: true
+    clip_limit: 2.0
+    tile_grid_size: 8
+  normalization: "imagenet"  # mean/std from ImageNet
+
+# ---- Augmentation ----
+augmentation:
+  horizontal_flip: 0.5
+  rotation_limit: 30
+  brightness_limit: 0.2
+  contrast_limit: 0.2
+  color_jitter:
+    brightness: 0.1
+    contrast: 0.1
+    saturation: 0.1
+    hue: 0.05
+    p: 0.3
+  shift_scale:
+    shift_limit: 0.05
+    scale_limit: 0.1
+    p: 0.3
+  coarse_dropout:
+    max_holes: 4
+    max_height: 32
+    max_width: 32
+    p: 0.3
+
+# ---- Training ----
+training:
+  max_epochs: 50
+  early_stopping_patience: 10
+  early_stopping_metric: "val/macro_auc"
+  early_stopping_mode: "max"
+  mixed_precision: true
+  gradient_accumulation_steps: 1
+  num_workers: 4
+  pin_memory: true
+
+# ---- Optimizer ----
+optimizer:
+  name: "adamw"
+  lr_backbone: 1.0e-4
+  lr_head: 5.0e-4
+  weight_decay: 1.0e-4
+
+# ---- Scheduler ----
+scheduler:
+  name: "cosine_warmrestarts"
+  T_0: 10
+  T_mult: 2
+
+# ---- Loss ----
+loss:
+  name: "bce_weighted"
+  class_weight_cap: 10.0
+  focal_gamma: null
+  asl_gamma_pos: null
+  asl_gamma_neg: null
+
+# ---- Evaluation ----
+evaluation:
+  primary_metric: "macro_auc"
+  metrics:
+    - "macro_auc"
+    - "micro_auc"
+    - "per_label_auc"
+    - "f1_macro"
+    - "f1_micro"
+    - "accuracy"
+    - "precision_macro"
+    - "recall_macro"
+    - "specificity_macro"
+    - "brier_score"
+    - "ece"
+  threshold_optimization: true
+  threshold_search_range: [0.1, 0.9]
+  threshold_search_step: 0.01
+
+# ---- Grad-CAM ----
+gradcam:
+  enabled: true
+  log_every_n_epochs: 5
+  num_fixed_samples: 50
+  target_layer: "auto"  # Auto-detect last conv/attention layer
+
+# ---- TTA ----
+tta:
+  enabled: false
+  strategies:
+    - "hflip"
+    - "five_crop"

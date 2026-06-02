@@ -1,0 +1,55 @@
+# Preprocessing Ablation (run with champion backbone only)
+
+P-01:
+  experiment_id: "P-01"
+  phase: "ablation-preprocessing"
+  tags: ["ablation", "preprocessing", "raw"]
+  preprocessing:
+    border_removal: false
+    clahe:
+      enabled: false
+  augmentation: null  # Disable all augmentation
+
+P-02:
+  experiment_id: "P-02"
+  phase: "ablation-preprocessing"
+  tags: ["ablation", "preprocessing", "crop_resize"]
+  preprocessing:
+    border_removal: true
+    clahe:
+      enabled: false
+  augmentation: null
+
+P-03:
+  experiment_id: "P-03"
+  phase: "ablation-preprocessing"
+  tags: ["ablation", "preprocessing", "crop_resize_clahe"]
+  preprocessing:
+    border_removal: true
+    clahe:
+      enabled: true
+      clip_limit: 2.0
+      tile_grid_size: 8
+  augmentation: null
+
+# P-04 = full pipeline (same as base config) — reuse champion run
+
+---
+# Phase 5 — External Validation & TTA
+
+T-01:
+  experiment_id: "T-01"
+  phase: "phase5-external"
+  tags: ["external", "brset", "no_tta"]
+  tta:
+    enabled: false
+
+T-02:
+  experiment_id: "T-02"
+  phase: "phase5-external"
+  tags: ["external", "brset", "tta"]
+  tta:
+    enabled: true
+    strategies:
+      - "hflip"
+      - "five_crop"

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  background:
+    radial-gradient(1200px 800px at 85% -10%, rgba(20, 227, 202, 0.05), transparent 60%),
+    radial-gradient(800px 600px at -10% 100%, rgba(191, 90, 242, 0.04), transparent 55%),
+    #0B0B0D;
+  color: #ECECEF;
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle grain texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.4;
+}
+
+#root { position: relative; z-index: 1; }
+
+/* Typography helpers */
+.display { font-family: "Fraunces", ui-serif, serif; font-optical-sizing: auto; letter-spacing: -0.015em; }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #66666F;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #23232C; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A46; border: 2px solid transparent; background-clip: padding-box; }
+
+/* Focus ring for keyboard users */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(20, 227, 202, 0.4);
+  border-radius: 6px;
+}
+
+/* Chip / button hover micro */
+.chip, .btn { transition: all 140ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.chip:active, .btn:active { transform: translateY(1px) scale(0.98); }
+
+/* Fine line dividers used throughout */
+.hairline { background: linear-gradient(90deg, transparent, #2A2A33 20%, #2A2A33 80%, transparent); height: 1px; width: 100%; }
+.hairline-v { background: linear-gradient(180deg, transparent, #2A2A33 20%, #2A2A33 80%, transparent); width: 1px; height: 100%; }
+
+/* Crosshair cursor over the fundus viewer */
+.cursor-anno { cursor: crosshair; }
+
+/* Fundus image placeholder rendering */
+.fundus-mock {
+  background:
+    radial-gradient(circle at 45% 55%, #e0a068 0%, #b06a3a 18%, #8b3a1e 40%, #4a1808 70%, #1a0604 100%);
+}
+
+/* Disable text selection in the viewer for better UX */
+.no-select { user-select: none; -webkit-user-select: none; }
+
+/* Recording indicator pulse */
+@keyframes rec { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+.rec-dot { animation: rec 1s ease-in-out infinite; }

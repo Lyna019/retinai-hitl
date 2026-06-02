@@ -1,0 +1,110 @@
+name: retinai-hitl
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-retinai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retinai_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-retinai}
+    volumes:
+      - retinai_db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-retinai}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      model-service:
+        condition: service_started
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-prod}
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-retinai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retinai_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-retinai}
+      MODEL_SERVICE_URL: http://model-service:9000
+      VLM_SERVICE_URL: ${VLM_SERVICE_URL:-}
+      VLM_API_KEY: ${VLM_API_KEY:-}
+      VLM_KUBEFLOW_COOKIE: ${VLM_KUBEFLOW_COOKIE:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLINICAL_DB_URL: ${CLINICAL_DB_URL:-}
+      RETIZERO_SERVICE_URL: ${RETIZERO_SERVICE_URL:-http://retizero-service:9001}
+    volumes:
+      - ./backend:/app
+      - retinai_images:/app/data/images
+      - retinai_audio:/app/data/audio
+      - retinai_gradcam:/app/data/gradcam
+      # ── Dataset import shortcuts ──────────────────────────────────────────
+      # Uncomment and adjust paths on each machine:
+      # - "/path/to/clinical:/tmp/clinical:ro"
+      # - "/path/to/downloads:/tmp/downloads:ro"
+    ports:
+      - "8000:8000"
+
+  model-service:
+    build: ./model-service
+    restart: unless-stopped
+    environment:
+      MODEL_VERSION: ${MODEL_VERSION:-retinai-v0.5.1}
+      MODEL_ARCH: ${MODEL_ARCH:-swin_base}
+      NUM_CLASSES: ${NUM_CLASSES:-9}
+      IMG_SIZE: ${IMG_SIZE:-512}
+      GRADCAM_ROOT: /app/data/gradcam
+      CHECKPOINT_PATH: /app/checkpoints/best.pt
+    volumes:
+      - ./model-service:/app
+      - ./model-service/checkpoints:/app/checkpoints
+      - retinai_images:/app/data/images
+      - retinai_gradcam:/app/data/gradcam
+    ports:
+      - "9000:9000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  retizero-service:
+    build: ./retizero-service
+    restart: unless-stopped
+    environment:
+      WEIGHTS_PATH: /app/checkpoints/RetiZero.pth
+    volumes:
+      - ./retizero-service/checkpoints:/app/checkpoints
+      - retinai_images:/app/data/images
+    ports:
+      - "9001:9001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  retinai_db:
+  retinai_images:
+  retinai_audio:
+  retinai_gradcam:

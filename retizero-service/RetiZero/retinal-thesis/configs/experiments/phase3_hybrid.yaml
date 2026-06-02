@@ -1,0 +1,44 @@
+# Phase 3 — Hybrid CNN+Transformer
+
+H-01:
+  experiment_id: "H-01"
+  phase: "phase3-hybrid"
+  tags: ["hybrid", "dual_branch", "efficientnet_swin"]
+  model:
+    backbone: "hybrid_dual_branch"
+    family: "hybrid"
+    pretrained: "imagenet"
+    hybrid:
+      type: "dual_branch"
+      cnn_branch: "efficientnet_b4"
+      transformer_branch: "swin_base_patch4_window7_224"
+      fusion_dim: 512
+      fusion_dropout: 0.3
+      freeze_branches_epochs: 5
+      unfreeze_lr_factor: 0.1  # backbone LR *= 0.1 after unfreeze
+  data:
+    resolution: "__BEST_RES__"
+    batch_size: 8  # Two branches = 2x memory
+  training:
+    gradient_accumulation_steps: 4
+
+H-02:
+  experiment_id: "H-02"
+  phase: "phase3-hybrid"
+  tags: ["hybrid", "cnn_transformer_head"]
+  model:
+    backbone: "hybrid_transformer_head"
+    family: "hybrid"
+    pretrained: "imagenet"
+    hybrid:
+      type: "cnn_transformer_head"
+      cnn_backbone: "__TOP1__"
+      transformer_layers: 2
+      transformer_heads: 8
+      transformer_dim_ff: 2048
+      transformer_dropout: 0.1
+      freeze_branches_epochs: 5
+      unfreeze_lr_factor: 0.1
+  data:
+    resolution: "__BEST_RES__"
+    batch_size: 16

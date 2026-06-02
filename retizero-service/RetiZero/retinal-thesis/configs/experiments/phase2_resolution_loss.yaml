@@ -1,0 +1,88 @@
+# Phase 2A — Resolution Study (run on Top-2 backbones from Phase 1)
+# R-01 and R-04 reuse Phase 1 runs (224×224), no need to rerun
+
+R-02:
+  experiment_id: "R-02"
+  phase: "phase2a-resolution"
+  tags: ["resolution", "384px"]
+  model:
+    backbone: "__TOP1__"  # Replace after Phase 1
+    family: "__TOP1_FAMILY__"
+    pretrained: "__TOP1_PRETRAINED__"
+  data:
+    resolution: 384
+    batch_size: 16
+
+R-03:
+  experiment_id: "R-03"
+  phase: "phase2a-resolution"
+  tags: ["resolution", "512px"]
+  model:
+    backbone: "__TOP1__"
+    family: "__TOP1_FAMILY__"
+    pretrained: "__TOP1_PRETRAINED__"
+  data:
+    resolution: 512
+    batch_size: 8
+  training:
+    gradient_accumulation_steps: 4  # effective batch = 32
+
+R-05:
+  experiment_id: "R-05"
+  phase: "phase2a-resolution"
+  tags: ["resolution", "384px"]
+  model:
+    backbone: "__TOP2__"
+    family: "__TOP2_FAMILY__"
+    pretrained: "__TOP2_PRETRAINED__"
+  data:
+    resolution: 384
+    batch_size: 16
+
+R-06:
+  experiment_id: "R-06"
+  phase: "phase2a-resolution"
+  tags: ["resolution", "512px"]
+  model:
+    backbone: "__TOP2__"
+    family: "__TOP2_FAMILY__"
+    pretrained: "__TOP2_PRETRAINED__"
+  data:
+    resolution: 512
+    batch_size: 8
+  training:
+    gradient_accumulation_steps: 4
+
+---
+# Phase 2B — Loss Function Study (run at best resolution on champion backbone)
+
+L-02:
+  experiment_id: "L-02"
+  phase: "phase2b-loss"
+  tags: ["loss", "focal"]
+  model:
+    backbone: "__CHAMPION__"
+    family: "__CHAMPION_FAMILY__"
+    pretrained: "__CHAMPION_PRETRAINED__"
+  data:
+    resolution: "__BEST_RES__"
+    batch_size: "__BEST_BS__"
+  loss:
+    name: "focal"
+    focal_gamma: 2.0
+
+L-03:
+  experiment_id: "L-03"
+  phase: "phase2b-loss"
+  tags: ["loss", "asl"]
+  model:
+    backbone: "__CHAMPION__"
+    family: "__CHAMPION_FAMILY__"
+    pretrained: "__CHAMPION_PRETRAINED__"
+  data:
+    resolution: "__BEST_RES__"
+    batch_size: "__BEST_BS__"
+  loss:
+    name: "asymmetric"
+    asl_gamma_pos: 0
+    asl_gamma_neg: 4
