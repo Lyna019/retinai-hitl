@@ -504,6 +504,8 @@ def health():
         "device":            str(_device) if _device else "cpu",
         "num_classes":       NUM_CLASSES,
         "disease_codes":     DISEASE_CODES,
+        "gradcam_enabled":   GRADCAM_ENABLED,
+        "temperature":       TEMPERATURE,
     }
 
 
