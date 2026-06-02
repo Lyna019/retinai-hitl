@@ -372,9 +372,13 @@ def _real_predict(model, device, preprocessed: Image.Image):
 
 
 def _run_gradcam(model, device, preprocessed: Image.Image, class_idx: int, image_id: str) -> str | None:
-    """Generate Grad-CAM heatmap, save to GRADCAM_ROOT, return file path or None."""
+    """
+    Generate Grad-CAM heatmap.
+    Returns base64-encoded PNG string so the backend can store it locally,
+    regardless of whether the model-service is local or remote (HPC).
+    """
     try:
-        import torch
+        import io, base64, torch
         from pytorch_grad_cam import GradCAM
         from pytorch_grad_cam.utils.image import show_cam_on_image
         from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
@@ -396,13 +400,12 @@ def _run_gradcam(model, device, preprocessed: Image.Image, class_idx: int, image
                 targets=[ClassifierOutputTarget(class_idx)],
             )[0]
 
-        overlay  = show_cam_on_image(rgb_img, mask, use_rgb=True)
-        out_dir  = Path(GRADCAM_ROOT)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / f"{image_id}.png"
-        Image.fromarray(overlay).save(str(out_path))
-        log.info("GradCAM saved: %s", out_path)
-        return str(out_path)
+        overlay = show_cam_on_image(rgb_img, mask, use_rgb=True)
+        buf = io.BytesIO()
+        Image.fromarray(overlay).save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        log.info("GradCAM generated for %s (%d bytes)", image_id, len(buf.getvalue()))
+        return b64
 
     except Exception as exc:
         log.warning("GradCAM failed for %s: %s", image_id, exc)
@@ -511,13 +514,15 @@ def predict(req: PredictRequest, background_tasks: BackgroundTasks):
 
     if model is not None and preprocessed is not None:
         top_k, uncertainty, top_class_idx = _real_predict(model, device, preprocessed)
+        gradcam_b64 = None
         if GRADCAM_ENABLED:
-            background_tasks.add_task(_run_gradcam, model, device, preprocessed, top_class_idx, req.image_id)
+            gradcam_b64 = _run_gradcam(model, device, preprocessed, top_class_idx, req.image_id)
         return {
             "model_version": MODEL_VERSION,
             "top_k":         top_k,
             "uncertainty":   uncertainty,
-            "gradcam_url":   f"/api/files/gradcam/{req.image_id}.png" if GRADCAM_ENABLED else None,
+            "gradcam_url":   f"/api/files/gradcam/{req.image_id}.png" if gradcam_b64 else None,
+            "gradcam_data":  gradcam_b64,
             "preprocessed":  True,
         }
 

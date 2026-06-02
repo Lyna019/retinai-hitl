@@ -63,9 +63,20 @@ async def predict(
     is_mock = "-mock" in model_version
 
     if not is_mock:
-        top_k      = data.get("top_k", [])
+        top_k       = data.get("top_k", [])
         uncertainty = data.get("uncertainty")
         gradcam_url = data.get("gradcam_url")
+        gradcam_b64 = data.get("gradcam_data")
+
+        # Save GradCAM image locally if returned as base64 (remote model-service)
+        gradcam_path = None
+        if gradcam_b64:
+            import base64, pathlib
+            out_dir = pathlib.Path(settings.gradcam_root)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / f"{image_id}.png"
+            out_path.write_bytes(base64.b64decode(gradcam_b64))
+            gradcam_path = str(out_path)
 
         # Remove any stale mock predictions before storing the real one
         (
@@ -82,7 +93,7 @@ async def predict(
             model_version=model_version,
             top_k_json=top_k,
             confidence=top_k[0]["confidence"] if top_k else None,
-            gradcam_path=f"{settings.gradcam_root}/{image_id}.png" if gradcam_url else None,
+            gradcam_path=gradcam_path,
         )
         db.add(pred)
 
